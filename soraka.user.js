@@ -117,6 +117,7 @@ const END_WATCH_CHAPTER_VIDEO = (title, duration) => `完成自动观看视频: 
 const WATCH_CHAPTER_VIDEO_PROGRESS = (progress, percentum) => `观看进度: ${progress} ${percentum}%`;
 const AUTO_ANSWER_QUESTION = (question) => `自动回答视频问题: ${question}`;
 const ALERT_CHAPTER_TEST = '已完成自动观看，请完成章节测试';
+const VIDEO_WATCHED = '本章视频曾经已完成观看，请重新选择一个未完成观看都视频。';
 
 const NETWORK_ERROR = '网络错误，请刷新重试';
 
@@ -124,6 +125,7 @@ class Soraka {
   constructor() {
     this.iframe = null;
     this.config = {};
+    this.watched = false;
     this.logger = new Logger({
       prefix: 'Soraka',
       repo: GM_info.script.namespace,
@@ -275,9 +277,10 @@ class Soraka {
     });
   }
 
-  jumpToLastChapter() {
+  jumpToLastChapter_old() {
     return this.getChapters().then(chapters => {
-      const lastActiveChapter = chapters.pop();
+        console.log(chapters);
+      //const lastActiveChapter = chapters.pop();
       this.config.chapter = lastActiveChapter;
 
       const last = API_HOST + lastActiveChapter.href;
@@ -290,6 +293,34 @@ class Soraka {
       }
       return true;
     });
+  }
+
+  jumpToLastChapter() {
+    return this.getChapters().then(chapters => {
+      console.log(chapters);
+      this.chapters = chapters;
+      this.current = window.location.href;
+      this.chapters_length = chapters.length;
+      for (var i = 0; i < this.chapters_length; i++) {
+          this.current_chapter_path = i;
+          var now_chapter = this.chapters[i];
+          if (API_HOST + now_chapter.href == this.current) {
+              this.config.chapter = now_chapter;
+              break;
+          }
+      }
+      return true;
+    });
+  }
+
+  jumpToNextChapter() {
+      var next_captcher_id = this.current + 1;
+      if (next_captcher_id >= this.chapters_length) {
+          jumpToChapterTest();
+      }
+      this.logger.info('status', JUMP_TO_LAST_CHAPTER);
+      window.location.replace(API_HOST + this.chapters[next_captcher_id].href);
+      return true;
   }
 
   answerVideoQuestion(question) {
@@ -382,6 +413,8 @@ class Soraka {
           });
         }
 
+        this.watched = true;
+
         for(let i = 0; i < questions.length; i++) {
           if (now >= questions[i].startTime) {
             const question = questions.shift();
@@ -427,7 +460,7 @@ class Soraka {
     }, 500);
   }
 
-  onload() {
+  onload_old() {
     this.checkVersion()
       .then(this.jumpToLastChapter.bind(this))
       .then(isLast => {
@@ -435,6 +468,24 @@ class Soraka {
           this.getConfig().then(_ => {
             this.watchVideo().then(_ => {
               this.jumpToChapterTest();
+            });
+          });
+        }
+      });
+  }
+
+  onload() {
+    this.checkVersion()
+      .then(this.jumpToLastChapter.bind(this))
+      .then(isLast => {
+        if (isLast) {
+          this.getConfig().then(_ => {
+            this.watchVideo().then(_ => {
+              if (this.watched) {
+                  this.jumpToNextChapter();
+              } else {
+                  this.logger('status', VIDEO_WATCHED);
+              }
             });
           });
         }
