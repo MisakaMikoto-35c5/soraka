@@ -314,7 +314,7 @@ class Soraka {
   }
 
   jumpToNextChapter() {
-      var next_captcher_id = this.current + 1;
+      var next_captcher_id = this.current_chapter_path + 1;
       if (next_captcher_id >= this.chapters_length) {
           jumpToChapterTest();
       }
@@ -413,8 +413,6 @@ class Soraka {
           });
         }
 
-        this.watched = true;
-
         for(let i = 0; i < questions.length; i++) {
           if (now >= questions[i].startTime) {
             const question = questions.shift();
@@ -443,6 +441,7 @@ class Soraka {
             });
           } else {
             setTimeout(_ => _resolve(), loopStep * 1000);
+            this.watched = true;
           }
         }).then(loop.bind(this));
 
@@ -484,7 +483,7 @@ class Soraka {
               if (this.watched) {
                   this.jumpToNextChapter();
               } else {
-                  this.logger('status', VIDEO_WATCHED);
+                  this.logger.info('status', VIDEO_WATCHED);
               }
             });
           });
